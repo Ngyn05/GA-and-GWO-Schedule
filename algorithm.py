@@ -26,43 +26,62 @@ def repair(individual, teachers, rooms, timeslots, subjects):
     used_teacher, used_class, used_room = {}, {}, {}
 
     for (cls, sub, teacher, room, slot) in individual:
-        while (teacher, slot) in used_teacher or \
-              (cls, slot) in used_class or \
-              (room, slot) in used_room:
-            slot = random.choice(timeslots)
-            room = random.choice(list(rooms.keys()))
-        used_teacher[(teacher, slot)] = 1
-        used_class[(cls, slot)] = 1
-        used_room[(room, slot)] = 1
-
+        max_tries = 100
+        tries = 0
+        
+        # Lặp cho đến khi tìm được (teacher, slot, room) hợp lệ không có xung đột
+        while tries < max_tries:
+            # Kiểm tra xung đột cứng
+            if (teacher, slot) in used_teacher or \
+               (cls, slot) in used_class or \
+               (room, slot) in used_room:
+                # Chọn slot mới
+                slot = random.choice(timeslots)
+                # Chọn phòng mới
+                room = random.choice(list(rooms.keys()))
+                # Chọn giáo viên mới có thể dạy môn học này
+                valid_teachers = [t for t, d in teachers.items() if sub in d["subjects"]]
+                if valid_teachers:
+                    teacher = random.choice(valid_teachers)
+                tries += 1
+            else:
+                # Không có xung đột, thoát vòng lặp
+                break
+        
+        # Sửa phòng không đúng loại
         subj_type = subjects.get(sub, "Lecture")
         if subj_type != rooms[room]["type"]:
             valid_rooms = [r for r, d in rooms.items() if d["type"] == subj_type]
             if valid_rooms:
                 room = random.choice(valid_rooms)
+        
+        used_teacher[(teacher, slot)] = 1
+        used_class[(cls, slot)] = 1
+        used_room[(room, slot)] = 1
         fixed.append((cls, sub, teacher, room, slot))
+    
     return fixed
 
 
 def fitness(individual, teachers, rooms, classes, subjects):
     """Tính độ 'tốt' (fitness) của lịch trình."""
     penalty = 0
-    # used_teacher, used_class, used_room = {}, {}, {}
+    used_teacher, used_class, used_room = {}, {}, {}
 
     for (cls, sub, teacher, room, slot) in individual:
-        # if (teacher, slot) in used_teacher: penalty += 10
-        # else: used_teacher[(teacher, slot)] = 1
+        if (teacher, slot) in used_teacher: penalty += 10
+        else: used_teacher[(teacher, slot)] = 1
 
-        # if (cls, slot) in used_class: penalty += 10
-        # else: used_class[(cls, slot)] = 1
+        if (cls, slot) in used_class: penalty += 10
+        else: used_class[(cls, slot)] = 1
 
-        # if (room, slot) in used_room: penalty += 8
-        # else: used_room[(room, slot)] = 1
+        if (room, slot) in used_room: penalty += 8
+        else: used_room[(room, slot)] = 1
 
-        if rooms[room]["capacity"] < classes[cls]["students"]: penalty += 3
+        if rooms[room]["capacity"] < classes[cls]["students"]: penalty += 0.003
         subj_type = subjects.get(sub, "Lecture")
-        if subj_type != rooms[room]["type"]: penalty += 2
-        if slot not in teachers[teacher]["available"]: penalty += 2
+        if subj_type != rooms[room]["type"]: penalty += 0.002
+        if slot not in teachers[teacher]["available"]: penalty += 0.002
 
     return 1 / (1 + penalty)
 

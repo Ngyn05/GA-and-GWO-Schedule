@@ -18,10 +18,10 @@ def genetic_algorithm(teachers, classes, subjects, rooms, timeslots, log,
         while len(new_pop) < pop_size:
             p1, p2 = selection(population, fits)
             c1, c2 = crossover(p1, p2)
-            c1 = mutate(c1, mutation_rate, teachers, rooms, timeslots)
-            c2 = mutate(c2, mutation_rate, teachers, rooms, timeslots)
             c1 = repair(c1, teachers, rooms, timeslots, subjects)
             c2 = repair(c2, teachers, rooms, timeslots, subjects)
+            c1 = mutate(c1, mutation_rate, teachers, rooms, timeslots)
+            c2 = mutate(c2, mutation_rate, teachers, rooms, timeslots)
             new_pop += [c1, c2]
 
         population = new_pop[:pop_size]
@@ -34,7 +34,11 @@ def genetic_algorithm(teachers, classes, subjects, rooms, timeslots, log,
 
         history.append(best_fit)
 
+        # Nếu không có cải thiện quá lâu, thêm cá thể mới và tăng mutation
         if stagnation >= 30:
+            # Xóa 5 cá thể kém nhất
+            population = population[5:]
+            # Thêm 5 cá thể ngẫu nhiên mới
             for _ in range(5):
                 population.append(create_individual(classes, teachers, rooms, timeslots, subjects))
             stagnation = 0
